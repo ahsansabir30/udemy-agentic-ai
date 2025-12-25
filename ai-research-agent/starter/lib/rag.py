@@ -1,10 +1,10 @@
 from typing import TypedDict, List
 import logging
 
-from utils.state_machine import StateMachine, Step, EntryPoint, Termination, Run, Resource
-from utils.llm import LLM
-from utils.messages import BaseMessage, UserMessage, SystemMessage
-from utils.vector_db import VectorStore
+from lib.state_machine import StateMachine, Step, EntryPoint, Termination, Run, Resource
+from lib.llm import LLM
+from lib.messages import BaseMessage, UserMessage, SystemMessage
+from lib.vector_db import VectorStore
 
 
 logging.getLogger('pdfminer').setLevel(logging.ERROR)

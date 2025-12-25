@@ -1,11 +1,11 @@
 from typing import TypedDict, List, Optional, Union, TypeVar
 import json
 
-from utils.state_machine import StateMachine, Step, EntryPoint, Termination, Run
-from utils.llm import LLM
-from utils.messages import AIMessage, UserMessage, SystemMessage, ToolMessage
-from utils.tools import Tool, ToolCall
-from utils.memory import ShortTermMemory
+from lib.state_machine import StateMachine, Step, EntryPoint, Termination, Run
+from lib.llm import LLM
+from lib.messages import AIMessage, UserMessage, SystemMessage, ToolMessage
+from lib.tooling import Tool, ToolCall
+from lib.memory import ShortTermMemory
 
 # Define the state schema
 class AgentState(TypedDict):
@@ -13,13 +13,15 @@ class AgentState(TypedDict):
     instructions: str  # System instructions for the agent
     messages: List[dict]  # List of conversation messages
     current_tool_calls: Optional[List[ToolCall]]  # Current pending tool calls
+    total_tokens: int  # Track the cumulative total
     
 class Agent:
     def __init__(self, 
                  model_name: str,
                  instructions: str, 
                  tools: List[Tool] = None,
-                 temperature: float = 0.7):
+                 temperature: float = 0.7,
+                 api_key: Optional[str] = None):
         """
         Initialize an Agent
         
@@ -28,11 +30,13 @@ class Agent:
             instructions: System instructions for the agent
             tools: Optional list of tools available to the agent
             temperature: Temperature parameter for LLM (default: 0.7)
+            api_key: API key for the LLM
         """
         self.instructions = instructions
         self.tools = tools if tools else []
         self.model_name = model_name
         self.temperature = temperature
+        self.api_key = api_key
         
         # Initialize memory and state machine
         self.memory = ShortTermMemory()
@@ -60,19 +64,28 @@ class Agent:
         llm = LLM(
             model=self.model_name,
             temperature=self.temperature,
-            tools=self.tools
+            tools=self.tools,
+            api_key=self.api_key,
+            base_url="https://openai.vocareum.com/v1"
         )
-
         response = llm.invoke(state["messages"])
         tool_calls = response.tool_calls if response.tool_calls else None
 
+        current_total = state.get("total_tokens", 0)
+        if response.token_usage:
+            current_total += response.token_usage.total_tokens
+
         # Create AI message with content and tool calls
-        ai_message = AIMessage(content=response.content, tool_calls=tool_calls)
-        
+        ai_message = AIMessage(
+            content=response.content, 
+            tool_calls=tool_calls,
+        )
+
         return {
             "messages": state["messages"] + [ai_message],
             "current_tool_calls": tool_calls,
-            "session_id": state["session_id"]
+            "session_id": state["session_id"],
+            "total_tokens": current_total,
         }
 
     def _tool_step(self, state: AgentState) -> AgentState:

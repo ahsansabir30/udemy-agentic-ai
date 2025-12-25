@@ -1,13 +1,14 @@
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from openai import OpenAI
-from utils.messages import (
+from lib.messages import (
     AnyMessage,
+    TokenUsage,
     AIMessage,
     BaseMessage,
     UserMessage,
 )
-from utils.tools import Tool
+from lib.tooling import Tool
 
 
 class LLM:
@@ -16,11 +17,12 @@ class LLM:
         model: str = "gpt-4o-mini",
         temperature: float = 0.0,
         tools: Optional[List[Tool]] = None,
-        api_key: Optional[str] = None
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = "https://openai.vocareum.com/v1"
     ):
         self.model = model
         self.temperature = temperature
-        self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.tools: Dict[str, Tool] = {
             tool.name: tool for tool in (tools or [])
         }
@@ -64,7 +66,16 @@ class LLM:
         choice = response.choices[0]
         message = choice.message
 
+        token_usage = None
+        if response.usage:
+            token_usage = TokenUsage(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens
+            )
+
         return AIMessage(
             content=message.content,
-            tool_calls=message.tool_calls
+            tool_calls=message.tool_calls,
+            token_usage=token_usage
         )

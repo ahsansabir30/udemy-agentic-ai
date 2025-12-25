@@ -1,78 +1,12 @@
 from typing import List, Optional, Dict, Any, Union
 from typing_extensions import TypedDict
 import chromadb
-from collections.abc import MutableSequence
 from chromadb.utils import embedding_functions
 from chromadb.api.models.Collection import Collection as ChromaCollection
 from chromadb.api.types import EmbeddingFunction, QueryResult, GetResult
-from dataclasses import dataclass, field
-import uuid
 
-@dataclass
-class Document:
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    content: str = field(default_factory=str)
-    metadata: Dict[str, Any] = None
-
-class Corpus(MutableSequence):
-    def __init__(self, documents: Optional[List[Document]] = None):
-        self._documents = documents or []
-
-    def __getitem__(self, index):
-        return self._documents[index]
-
-    def __setitem__(self, index, value: Document):
-        if not isinstance(value, Document):
-            raise TypeError("Collection only supports Document items")
-        self._documents[index] = value
-
-    def __delitem__(self, index):
-        del self._documents[index]
-
-    def __len__(self):
-        return len(self._documents)
-
-    def insert(self, index, value: Document):
-        if not isinstance(value, Document):
-            raise TypeError("Collection only supports Document items")
-        self._documents.insert(index, value)
-
-    def to_dict(self) -> Dict[str, List[Any]]:
-        """
-        Convert the corpus to a dictionary format suitable for batch operations.
-        
-        This method extracts all document contents, metadata, and IDs into
-        separate lists, which is the format typically expected by vector
-        databases and other batch processing systems. This allows for efficient
-        bulk operations on the entire corpus.
-        
-        Returns:
-            Dict[str, List[Any]]: Dictionary containing:
-                - 'contents': List of all document content strings
-                - 'metadatas': List of all document metadata dictionaries
-                - 'ids': List of all document ID strings
-                
-        Example:
-            >>> corpus = Corpus([doc1, doc2])
-            >>> batch_data = corpus.to_dict()
-            >>> chroma_collection.add(
-            ...     documents=batch_data['contents'],
-            ...     metadatas=batch_data['metadatas'],
-            ...     ids=batch_data['ids']
-            ... )
-        """
-        
-        # Use zip with unpacking to efficiently extract all fields
-        # Handle empty corpus case by providing empty defaults
-        contents, metadatas, ids = zip(*(
-            (doc.content, doc.metadata, doc.id) for doc in self._documents
-        )) if self._documents else ([], [], [])
-
-        return {
-            'contents': list(contents),
-            'metadatas': list(metadatas),
-            'ids': list(ids)
-        }
+from lib.loaders import PDFLoader
+from lib.documents import Document, Corpus
 
 
 class VectorStore:
@@ -94,7 +28,7 @@ class VectorStore:
     def __init__(self, chroma_collection: ChromaCollection):
         self._collection = chroma_collection
 
-    def add(self, item: Union[Document, List[Document]]):
+    def add(self, item: Union[Document, Corpus, List[Document]]):
         """
         Add documents to the vector store with automatic embedding generation.
         
@@ -132,7 +66,7 @@ class VectorStore:
             metadatas=item_dict["metadatas"]
         )
 
-    def query(self, query_texts: List[str], n_results: int = 3,
+    def query(self, query_texts: str | List[str], n_results: int = 3,
               where: Optional[Dict[str, Any]] = None,
               where_document: Optional[Dict[str, Any]] = None) -> QueryResult:
         """
@@ -267,3 +201,52 @@ class VectorStoreManager:
         except Exception:
             pass  # Store doesn't exist yet
 
+
+class CorpusLoaderService:
+    """
+    Service for loading documents from various sources into vector stores.
+    
+    This class provides convenient methods for loading and processing documents
+    from different file formats (currently PDF) into vector stores. It handles
+    the entire pipeline from file loading to vector store insertion.
+    
+    The service abstracts away the complexity of:
+    - Document loading and parsing
+    - Vector store creation and management
+    - Batch document insertion
+    - Progress reporting and error handling
+    """
+
+    def __init__(self, vector_store_manager: VectorStoreManager):
+        self.manager = vector_store_manager
+
+    def load_pdf(self, store_name: str, pdf_path: str) -> VectorStore:
+        """
+        Load a PDF file into a vector store.
+        
+        This method handles the complete pipeline of loading a PDF document,
+        parsing its content into pages/chunks, and storing them in a vector
+        store with embeddings. Each page becomes a separate document in the store.
+        
+        Args:
+            store_name (str): Name of the vector store to create or use
+            pdf_path (str): Path to the PDF file to load
+            
+        Returns:
+            VectorStore: The vector store containing the loaded PDF content
+            
+        Example:
+            >>> loader = CorpusLoaderService(manager)
+            >>> store = loader.load_pdf("research_papers", "paper.pdf")
+            >>> # PDF is now searchable in the vector store
+            >>> results = store.query(["machine learning methodology"])
+        """
+        store = self.manager.get_or_create_store(store_name)
+        print(f"VectorStore `{store_name}` ready!")
+
+        loader = PDFLoader(pdf_path)
+        document = loader.load()
+        store.add(document)
+        print(f"Pages from `{pdf_path}` added!")
+
+        return store

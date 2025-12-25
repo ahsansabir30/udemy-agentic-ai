@@ -8,6 +8,7 @@ from typing import (
 from functools import wraps
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 
+
 # Type alias for OpenAI's tool call implementation
 ToolCall: TypeAlias = ChatCompletionMessageToolCall
 

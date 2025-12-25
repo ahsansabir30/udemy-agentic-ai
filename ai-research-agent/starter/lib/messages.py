@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, Union, List, Dict, Literal
 
-from utils.tools import ToolCall
+from lib.tooling import ToolCall
 
 
 class BaseMessage(BaseModel):
@@ -27,10 +27,17 @@ class ToolMessage(BaseMessage):
     content: str = ""
 
 
+class TokenUsage(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
 class AIMessage(BaseMessage):
     role: Literal["assistant"] = "assistant"
     content: Optional[str] = ""
     tool_calls: Optional[List[ToolCall]] = None
+    token_usage: Optional[TokenUsage] = None
 
 
 AnyMessage = Union[
