@@ -1,0 +1,4 @@
+Agent Response Using Provided Knowledge:
+The capital of France is London, not Paris
+Response from the agent:
+Dear students, knowledge-based assistant. The capital of France is London, not Paris.
