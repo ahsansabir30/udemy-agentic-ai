@@ -69,6 +69,7 @@ class Agent:
             base_url="https://openai.vocareum.com/v1"
         )
         response = llm.invoke(state["messages"])
+        # print("LLM Updated Response", response.content)
         tool_calls = response.tool_calls if response.tool_calls else None
 
         current_total = state.get("total_tokens", 0)
