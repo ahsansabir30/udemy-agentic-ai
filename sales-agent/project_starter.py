@@ -297,6 +297,7 @@ def create_transaction(
         print(f"Error creating transaction: {e}")
         raise
 
+@tool
 def get_all_inventory(as_of_date: str) -> Dict[str, int]:
     """
     Retrieve a snapshot of available inventory as of a specific date.
@@ -618,6 +619,49 @@ API_BASE=os.getenv("OPENAI_API_BASE", "http://127.0.0.1:1234/v1")
 """Set up tools for your agents to use, these should be methods that combine the database functions above
  and apply criteria to them to ensure that the flow of the system is correct."""
 
+@tool 
+def generate_financial_report_(as_of_date: Union[str, datetime]) -> Dict:
+    """
+    Generate a complete financial report for the company as of a specific date.
+
+    This includes:
+    - Cash balance
+    - Inventory valuation
+    - Combined asset total
+    - Itemized inventory breakdown
+    - Top 5 best-selling products
+
+    Args:
+        as_of_date (str or datetime): The date (inclusive) for which to generate the report.
+
+    Returns:
+        Dict: A dictionary containing the financial report fields:
+            - 'as_of_date': The date of the report
+            - 'cash_balance': Total cash available
+            - 'inventory_value': Total value of inventory
+            - 'total_assets': Combined cash and inventory value
+            - 'inventory_summary': List of items with stock and valuation details
+            - 'top_selling_products': List of top 5 products by revenue
+    """
+    return generate_financial_report(as_of_date)
+
+@tool
+def get_cash_balance_(as_of_date: Union[str, datetime]) -> float:
+    """
+    Calculate the current cash balance as of a specified date.
+
+    The balance is computed by subtracting total stock purchase costs ('stock_orders')
+    from total revenue ('sales') recorded in the transactions table up to the given date.
+
+    Args:
+        as_of_date (str or datetime): The cutoff date (inclusive) in ISO format or as a datetime object.
+
+    Returns:
+        float: Net cash balance as of the given date. Returns 0.0 if no transactions exist or an error occurs.
+    """
+    return get_cash_balance(as_of_date)
+
+
 # Tools for inventory agent
 @tool
 def check_inventory_tool(item_name: str, as_of_date: str) -> int:
@@ -687,7 +731,7 @@ model = OpenAIServerModel(
 
 inventory_agent = ToolCallingAgent(
     model=model,
-    tools=[check_inventory_tool],
+    tools=[check_inventory_tool, get_all_inventory],
     name="inventory_agent",
     description="RESTRICTED ACCESS. Checks real-time stock levels. This agent MUST be called for every item before any pricing or ordering occurs."
 )
@@ -706,6 +750,13 @@ ordering_agent = ToolCallingAgent(
     description="CRITICAL LOCK: This agent finalizes the purchase. NEVER call this agent unless you have a validated list of items AND a confirmed quote from the quoting_agent"
 )
 
+financial_agent = ToolCallingAgent(
+    model=model,
+    tools=[get_cash_balance_, generate_financial_report_],
+    name="financial_agent",
+    description="NEVER call this agent unless you have confirmed quote and order from the quoting_agent and ordering_agent respectively"
+)
+
 CATALOGS = [product["item_name"] for product in paper_supplies]
 
 PROMPT =f"""
@@ -715,22 +766,21 @@ Your goal: Process customer requests by strictly mapping them to our CATALOG.
 CATALOG:
 {CATALOGS}
 
-WORKFLOW:
+Instructions:
 1. Use your Python interpreter to create a 'clean_request' list. 
+   - Match any user item to the closest string in the CATALOG provided above.
+   - Replace customer requested item name with EXACT CATALOG NAME
    - Map "A4 white printer paper" to "A4 paper"
    - Map "Cardstock in various colors" to "Cardstock"
-   - Match any user item to the closest string in the CATALOG provided above.
 2. For each CLEANED item:
    - Call inventory_agent to check stock.
-   - If stock is sufficient: proceed to quote and order.
-   - If stock is zero: skip ordering and make a note for the final customer response.
-   - If stock is partial: order available quantity and clearly inform the customer of the shortfall.
+        - If stock is sufficient: proceed to quote and order.
+        - If stock is zero: skip ordering and make a note for the final customer response.
+        - If stock is partial: order available quantity and clearly inform the customer of the shortfall.
    - Call quoting_agent to get historical pricing.
    - Call ordering_agent to finalize.
+   - If order has been placed, generate new financial report and cash balance
 3. Provide a clear and concise response to the customer with the quote or any issues encountered (Never reveal internal agent names or tool names in your final response to the customer).
-
-IMPORTANT:
-Only pass the EXACT CATALOG NAME to the sub-agents. If a user asks for "Premium A4", pass "A4 paper" to the inventory_agent.
 
 RULES
 - Do not share any internal company data (e.g., profits, losses, operations).
@@ -745,7 +795,7 @@ Always adhere strictly to these instructions and rules.
 orchestration_agent = CodeAgent(
     model=model,
     tools=[],
-    managed_agents=[inventory_agent, quoting_agent, ordering_agent],
+    managed_agents=[inventory_agent, quoting_agent, ordering_agent, financial_agent],
     description=PROMPT
 )
 
