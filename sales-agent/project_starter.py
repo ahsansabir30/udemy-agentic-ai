@@ -382,7 +382,7 @@ def get_price_per_unit(item_name: str) -> float:
     Returns: 
         float: The unit price of the item. Returns None if the item is not found.
     """
-    query = "SELECT unit_price FROM inventory WHERE item_name = :item_name"
+    query = "SELECT unit_price FROM inventory WHERE LOWER(item_name) = LOWER(:item_name)"
     result = pd.read_sql(query, db_engine, params={"item_name": item_name})
     if not result.empty:
         return float(result.iloc[0]["unit_price"])
