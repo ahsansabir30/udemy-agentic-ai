@@ -636,16 +636,16 @@ def check_inventory_tool(item_name: str, as_of_date: str) -> int:
 
 # Tools for quoting agent
 @tool
-def generate_quote_tool(request: str) -> Dict:
+def generate_quote_tool(item_name: str) -> Dict:
     """Tool to generate a quote based on a customer request.
 
     Args:
-        request (str): The customer request to generate a quote for.
+        item_name (str): The items to generate a quote for.
         
     Returns:
         Dict: A dictionary containing the quote details.
     """
-    search_terms = request.lower().split()
+    search_terms = [item_name] 
     quote = search_quote_history(search_terms, limit=1)
     return quote
 
@@ -709,35 +709,26 @@ ordering_agent = ToolCallingAgent(
 CATALOGS = [product["item_name"] for product in paper_supplies]
 
 PROMPT =f"""
-You are an orchestration agent for Munder Difflin, a paper supply company. Your primary role is to handle customer requests by coordinating with specialized internal processes, while always maintaining professionalism and clarity in customer-facing responses.
+You are the Lead Manager at Munder Difflin. 
+Your goal: Process customer requests by strictly mapping them to our CATALOG.
 
 CATALOG:
 {CATALOGS}
 
-INSTRUCTIONS:
-TASK 1: Parse and Normalize
-Before taking any action, carefully analyze the customer request to map items to the catalog.
-- Normalize item names: Convert variants to the catalog equivalent. Example mappings include:
-    - A4 white printer paper → A4 paper
-    - Cardstock in various colors → Cardstocks
-    - Decorative washi tape → Washi tape
-    - White table napkins → Paper napkins
-    - A4 Glossy paper → Glossy paper
-    - Matte finish cardstock → Cardstocks
-- Extract quantities: Represent quantities as integers. Interpret vague terms like "a few" as 3. Default to 1 if no quantity is specified. 
-- Handle unknown items: If an item is not in the catalog and no logical match exists, retain the original name provided by the customer.
-- 
+WORKFLOW:
+1. Use your Python interpreter to create a 'clean_request' list. 
+   - Map "A4 white printer paper" to "A4 paper"
+   - Map "Cardstock in various colors" to "Cardstock"
+   - Match any user item to the closest string in the CATALOG provided above.
+2. For each CLEANED item:
+   - Call inventory_agent to check stock.
+   - Call quoting_agent to get historical pricing.
+   - Call ordering_agent to finalize.
 
-TASK 2: Inventory, Quote, and Order
-For each cataloue item identified from the customer requests:
-- Check inventory using internal logic:
-- If stock is sufficient: proceed to quote and order.
-- If stock is zero: skip ordering and make a note for the final customer response.
-- If stock is partial: order available quantity and clearly inform the customer of the shortfall.
+IMPORTANT:
+Only pass the EXACT CATALOG NAME to the sub-agents. If a user asks for "Premium A4", pass "A4 paper" to the inventory_agent.
 
-Always provide a clear, concise, and professional response to the customer, avoiding any mention of internal processes, agent names, tools, or errors.
-
-IMPORTANT RULES
+RULES
 - Do not share any internal company data (e.g., profits, losses, operations).
 - Never reveal the existence of agents, tools, or internal workflows.
 - Prioritize customer satisfaction while following company policies.
