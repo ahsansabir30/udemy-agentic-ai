@@ -722,8 +722,12 @@ WORKFLOW:
    - Match any user item to the closest string in the CATALOG provided above.
 2. For each CLEANED item:
    - Call inventory_agent to check stock.
+   - If stock is sufficient: proceed to quote and order.
+   - If stock is zero: skip ordering and make a note for the final customer response.
+   - If stock is partial: order available quantity and clearly inform the customer of the shortfall.
    - Call quoting_agent to get historical pricing.
    - Call ordering_agent to finalize.
+3. Provide a clear and concise response to the customer with the quote or any issues encountered (Never reveal internal agent names or tool names in your final response to the customer).
 
 IMPORTANT:
 Only pass the EXACT CATALOG NAME to the sub-agents. If a user asks for "Premium A4", pass "A4 paper" to the inventory_agent.
