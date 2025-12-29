@@ -1,0 +1,40 @@
+[
+  {
+    "timestamp": "2025-12-28T17:29:37.657320",
+    "tool_name": "calculator",
+    "input": {
+      "expression": "1 + 1"
+    },
+    "output": "The result of 1 + 1 is 2"
+  },
+  {
+    "timestamp": "2025-12-28T17:30:29.840572",
+    "tool_name": "document_reader",
+    "input": {
+      "doc_id": "Invoice #12345"
+    },
+    "output": "{'found': False}"
+  },
+  {
+    "timestamp": "2025-12-28T17:31:28.218263",
+    "tool_name": "document_search",
+    "input": {
+      "query": "invoice #12345",
+      "search_type": "keyword",
+      "doc_type": null,
+      "min_amount": null,
+      "max_amount": null,
+      "comparison": null,
+      "amount": null
+    },
+    "output": "{'results_count': 3}"
+  },
+  {
+    "timestamp": "2025-12-28T17:31:29.101281",
+    "tool_name": "document_reader",
+    "input": {
+      "doc_id": "INV-001"
+    },
+    "output": "{'found': True, 'doc_type': 'invoice'}"
+  }
+]

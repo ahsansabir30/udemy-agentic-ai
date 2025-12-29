@@ -1,0 +1,161 @@
+{
+  "session_id": "f2ae78f6-6ea0-4648-a4d8-e58bc723f2ad",
+  "user_id": "test",
+  "conversation_history": [
+    {
+      "user_input": "hello",
+      "messages": [
+        {
+          "content": "You are a helpful document assistant specializing in answering questions about financial and healthcare documents.\n\nYour capabilities:\n- Answer specific questions about document content\n- Cite sources accurately\n- Provide clear, concise answers\n- Use available tools to search and read documents\n\nGuidelines:\n1. Always search for relevant documents before answering\n2. Cite specific document IDs when referencing information\n3. If information is not found, say so clearly\n4. Be precise with numbers and dates\n5. Maintain professional tone\n\n",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "system",
+          "name": null,
+          "id": "ce648fd9-8978-4827-84da-ea1276e7255c"
+        },
+        {
+          "content": "hello",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "human",
+          "name": null,
+          "id": "c23ec734-803b-4f17-9073-3c777f807293"
+        },
+        {
+          "content": "Hello! How can I assist you today with your financial or healthcare documents?",
+          "additional_kwargs": {
+            "refusal": null
+          },
+          "response_metadata": {
+            "token_usage": {
+              "completion_tokens": 16,
+              "prompt_tokens": 691,
+              "total_tokens": 707,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            },
+            "model_provider": "openai",
+            "model_name": "gpt-4o-2024-08-06",
+            "system_fingerprint": "fp_deacdd5f6f",
+            "id": "chatcmpl-Crop1dbEdtVdXbCDbrqvhg2DPnrMF",
+            "service_tier": "default",
+            "finish_reason": "stop",
+            "logprobs": null
+          },
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--bc049924-ef6b-4efa-8f3c-e38f02aabcd0-0",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": {
+            "input_tokens": 691,
+            "output_tokens": 16,
+            "total_tokens": 707,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          }
+        }
+      ],
+      "intent": {
+        "intent_type": "unknown",
+        "confidence": 0.6,
+        "reasoning": "The user input 'hello' is a greeting and does not provide enough context or information to determine a specific intent related to document processing. Without additional context or a follow-up request, it is unclear whether the user intends to ask a question, request a summary, or perform a calculation."
+      },
+      "next_step": "end",
+      "conversation_summary": "The user greeted the assistant, and the assistant responded, offering help with financial or healthcare documents.",
+      "active_documents": [],
+      "current_response": {
+        "messages": [
+          {
+            "content": "You are a helpful document assistant specializing in answering questions about financial and healthcare documents.\n\nYour capabilities:\n- Answer specific questions about document content\n- Cite sources accurately\n- Provide clear, concise answers\n- Use available tools to search and read documents\n\nGuidelines:\n1. Always search for relevant documents before answering\n2. Cite specific document IDs when referencing information\n3. If information is not found, say so clearly\n4. Be precise with numbers and dates\n5. Maintain professional tone\n\n",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "system",
+            "name": null,
+            "id": "ce648fd9-8978-4827-84da-ea1276e7255c"
+          },
+          {
+            "content": "hello",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "c23ec734-803b-4f17-9073-3c777f807293"
+          },
+          {
+            "content": "Hello! How can I assist you today with your financial or healthcare documents?",
+            "additional_kwargs": {
+              "refusal": null
+            },
+            "response_metadata": {
+              "token_usage": {
+                "completion_tokens": 16,
+                "prompt_tokens": 691,
+                "total_tokens": 707,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              },
+              "model_provider": "openai",
+              "model_name": "gpt-4o-2024-08-06",
+              "system_fingerprint": "fp_deacdd5f6f",
+              "id": "chatcmpl-Crop1dbEdtVdXbCDbrqvhg2DPnrMF",
+              "service_tier": "default",
+              "finish_reason": "stop",
+              "logprobs": null
+            },
+            "type": "ai",
+            "name": null,
+            "id": "lc_run--bc049924-ef6b-4efa-8f3c-e38f02aabcd0-0",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": {
+              "input_tokens": 691,
+              "output_tokens": 16,
+              "total_tokens": 707,
+              "input_token_details": {
+                "audio": 0,
+                "cache_read": 0
+              },
+              "output_token_details": {
+                "audio": 0,
+                "reasoning": 0
+              }
+            }
+          }
+        ]
+      },
+      "tools_used": [],
+      "session_id": "f2ae78f6-6ea0-4648-a4d8-e58bc723f2ad",
+      "user_id": "test",
+      "actions_taken": [
+        "classify_intent",
+        "qa_agent"
+      ]
+    }
+  ],
+  "document_context": [],
+  "created_at": "2025-12-28T17:26:16.897605",
+  "last_updated": "2025-12-28T17:26:21.376650"
+}
