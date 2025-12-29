@@ -16,7 +16,7 @@ class AnswerResponse(BaseModel):
     question: str = Field(description="The question asked by the user")
     answer: str = Field(description="The generated answer to the question")
     sources: List[str] = Field(default_factory=lambda: list, description="List of source document IDs")
-    confidence: float = Field(description="Confidence score of the answer")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score of the answer")
     timestamp: datetime = Field(default_factory=datetime.now)   
 
 class SummarizationResponse(BaseModel):
@@ -43,7 +43,7 @@ class UpdateMemoryResponse(BaseModel):
 class UserIntent(BaseModel):
     """User intent classification"""
     intent_type: Literal['qa', 'summarization', 'calculation', 'unknown'] = Field(description="Classified intent type")
-    confidence: float = Field(description="Confidence score of the classification")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score of the classification")
     reasoning: str = Field(description="Reasoning behind the classification")
 
 class SessionState(BaseModel):
