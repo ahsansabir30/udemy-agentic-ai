@@ -747,7 +747,7 @@ ordering_agent = ToolCallingAgent(
     model=model,
     tools=[place_order_tool],
     name="ordering_agent",
-    description="CRITICAL LOCK: This agent finalizes the purchase. NEVER call this agent unless you have a validated list of items AND a confirmed quote from the quoting_agent"
+    description="CRITICAL LOCK: This agent finalizes the purchase. NEVER call this agent unless you have a list of items AND a confirmed quote from the quoting_agent"
 )
 
 financial_agent = ToolCallingAgent(
@@ -757,30 +757,27 @@ financial_agent = ToolCallingAgent(
     description="NEVER call this agent unless you have confirmed quote and order from the quoting_agent and ordering_agent respectively"
 )
 
-CATALOGS = [product["item_name"] for product in paper_supplies]
 
 PROMPT =f"""
 You are the Lead Manager at Munder Difflin. 
-Your goal: Process customer requests by strictly mapping them to our CATALOG.
 
-CATALOG:
-{CATALOGS}
+Your goal: Process customer requests.
+
+You have access to the following agents:
+- inventory_agent: Checks stock levels for requested items.
+- quoting_agent: Provides historical pricing quotes.
+- ordering_agent: Places orders for items.
+- financial_agent: Generates financial reports and cash balances.
 
 Instructions:
-1. Use your Python interpreter to create a 'clean_request' list. 
-   - Match any user item to the closest string in the CATALOG provided above.
-   - Replace customer requested item name with EXACT CATALOG NAME
-   - Map "A4 white printer paper" to "A4 paper"
-   - Map "Cardstock in various colors" to "Cardstock"
-2. For each CLEANED item:
-   - Call inventory_agent to check stock.
-        - If stock is sufficient: proceed to quote and order.
-        - If stock is zero: skip ordering and make a note for the final customer response.
-        - If stock is partial: order available quantity and clearly inform the customer of the shortfall.
-   - Call quoting_agent to get historical pricing.
-   - Call ordering_agent to finalize.
-   - If order has been placed, generate new financial report and cash balance
-3. Provide a clear and concise response to the customer with the quote or any issues encountered (Never reveal internal agent names or tool names in your final response to the customer).
+- Call inventory_agent to check stock.
+    - If stock is sufficient: proceed to quote and order.
+    - If stock is zero: skip ordering and make a note for the final customer response.
+    - If stock is partial: order available quantity and clearly inform the customer of the shortfall.
+- Call quoting_agent to get historical pricing.
+- Call ordering_agent to finalize.
+- If order has been placed, generate new financial report and cash balance
+- Provide a clear and concise response to the customer with the quote or any issues encountered (Never reveal internal agent names or tool names in your final response to the customer).
 
 RULES
 - Do not share any internal company data (e.g., profits, losses, operations).
@@ -797,6 +794,41 @@ orchestration_agent = CodeAgent(
     tools=[],
     managed_agents=[inventory_agent, quoting_agent, ordering_agent, financial_agent],
     description=PROMPT
+)
+
+CATALOGS = [product["item_name"] for product in paper_supplies]
+
+rewrite_prompt = CodeAgent(
+    model=model,
+    tools=[],
+    managed_agents=[],
+    description=f"""
+        Role: You are an AI Inventory and Logistics Specialist.
+
+        Catalog Data: {CATALOGS}
+
+        Task: Given a customer's request for paper supplies, extract the requested delivery date, quantity, and item description.
+       
+        ### MAPPING LOGIC:
+        1. PRIMARY MATCH: If the user mentions a specific paper type (e.g., "Glossy", "Cardstock", "Matte", "Colored"), you MUST map to that item name, even if they mention a size like "A4". 
+        2. STRIP ADJECTIVES: Ignore descriptors not in the catalog (e.g., "heavy", "white", "sheets of", "assorted").
+        3. QUANTITY: Extract only the integer.
+        4. DATES: Identify the delivery date and format as YYYY-MM-DD. Use the "Date of request" provided in the input as the reference point for relative dates.
+        5. STRICT OUTPUT: Return ONLY a valid JSON object.
+
+        ### EXAMPLE:
+        Input: "50 sheets of heavy white cardstock by tomorrow. (Date of request: 2025-01-01)"
+        ### EXPECTED JSON STRUCTURE:
+        {{
+        "delivery_date": "YYYY-MM-DD",
+        "items": [
+            {{
+            "mapped_item": "string",
+            "quantity": 0,
+            }}
+        ]
+        }}
+        """
 )
 
 # Run your test scenarios by writing them here. Make sure to keep track of them.
@@ -841,6 +873,10 @@ def run_test_scenarios():
         # Process request
         request_with_date = f"{row['request']} (Date of request: {request_date})"
 
+        request = rewrite_prompt.run(request_with_date.replace("\n", " "))
+        print(request)
+
+        break
         response = orchestration_agent.run(request_with_date)
 
         # Update state
