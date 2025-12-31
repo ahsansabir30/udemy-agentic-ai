@@ -62,3 +62,4 @@ class Agent:
     def get_agent_tools(self):
         """Get list of available tools for the Energy Advisor"""
         return [t.name for t in TOOL_KIT]
+
