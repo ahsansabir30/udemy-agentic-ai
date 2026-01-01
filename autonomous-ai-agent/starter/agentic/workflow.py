@@ -180,6 +180,36 @@ def knowledge_node(state: AgentState) -> Dict[str, Any]:
         query = last_human_message.content
         logger.info(f"Processing knowledge query: {query[:100]}...")
 
+        # Retrieve memory context for personalized responses
+        user_id = state.get("user_context", {}).get("user_id", "unknown")
+        ticket_id = state.get("ticket_id", "unknown")
+        
+        memory_context = ""
+        conversation_history = []
+        user_prefs = {}
+        
+        if user_id != "unknown":
+            try:
+                # Get conversation history
+                conversation_history = get_conversation_history(user_id, ticket_id, limit=10)
+                if conversation_history:
+                    memory_context += f"\n\nCONVERSATION HISTORY:\n"
+                    for msg in conversation_history[-5:]:  # Last 5 messages for context
+                        role = "User" if msg["message_type"] == "human" else "Assistant"
+                        memory_context += f"{role}: {msg['content'][:200]}...\n"
+                
+                # Get user preferences
+                user_prefs = get_all_user_preferences(user_id)
+                if user_prefs:
+                    memory_context += f"\nUSER PREFERENCES:\n"
+                    for key, value in user_prefs.items():
+                        memory_context += f"- {key}: {value}\n"
+                        
+                logger.info(f"Retrieved memory context for user {user_id}: {len(conversation_history)} messages, {len(user_prefs)} preferences")
+            except Exception as e:
+                logger.error(f"Failed to retrieve memory context: {e}")
+                memory_context = ""
+
         # Check if we should escalate based on query complexity or previous failures
         should_escalate = False
 
@@ -189,7 +219,15 @@ def knowledge_node(state: AgentState) -> Dict[str, Any]:
             should_escalate = True
             logger.info("Query contains escalation keywords, routing to escalation")
 
-    result = knowledge_executor.invoke({"messages": state["messages"]})
+    # Create enhanced messages with memory context
+    enhanced_messages = messages.copy()
+    if memory_context:
+        # Add memory context as a system message at the beginning
+        from langchain_core.messages import SystemMessage
+        memory_message = SystemMessage(content=f"USER CONTEXT INFORMATION:{memory_context}")
+        enhanced_messages.insert(0, memory_message)
+
+    result = knowledge_executor.invoke({"messages": enhanced_messages})
 
     # Extract confidence information from the result if available
     confidence = 0.5  # Default confidence
@@ -241,7 +279,47 @@ def action_node(state: AgentState) -> Dict[str, Any]:
     logger.info("Action node processing request")
 
     initialize_agents()  # Ensure agents are initialized
-    result = action_executor.invoke({"messages": state["messages"]})
+    
+    # Retrieve memory context for personalized responses
+    user_id = state.get("user_context", {}).get("user_id", "unknown")
+    ticket_id = state.get("ticket_id", "unknown")
+    
+    memory_context = ""
+    conversation_history = []
+    user_prefs = {}
+    
+    if user_id != "unknown":
+        try:
+            # Get conversation history
+            conversation_history = get_conversation_history(user_id, ticket_id, limit=10)
+            if conversation_history:
+                memory_context += f"\n\nCONVERSATION HISTORY:\n"
+                for msg in conversation_history[-5:]:  # Last 5 messages for context
+                    role = "User" if msg["message_type"] == "human" else "Assistant"
+                    memory_context += f"{role}: {msg['content'][:200]}...\n"
+            
+            # Get user preferences
+            user_prefs = get_all_user_preferences(user_id)
+            if user_prefs:
+                memory_context += f"\nUSER PREFERENCES:\n"
+                for key, value in user_prefs.items():
+                    memory_context += f"- {key}: {value}\n"
+                    
+            logger.info(f"Retrieved memory context for action agent - user {user_id}: {len(conversation_history)} messages, {len(user_prefs)} preferences")
+        except Exception as e:
+            logger.error(f"Failed to retrieve memory context for action agent: {e}")
+            memory_context = ""
+
+    # Create enhanced messages with memory context
+    messages = state["messages"]
+    enhanced_messages = messages.copy()
+    if memory_context:
+        # Add memory context as a system message at the beginning
+        from langchain_core.messages import SystemMessage
+        memory_message = SystemMessage(content=f"USER CONTEXT INFORMATION:{memory_context}")
+        enhanced_messages.insert(0, memory_message)
+
+    result = action_executor.invoke({"messages": enhanced_messages})
 
     # Save AI response to persistent memory
     ticket_id = state.get("ticket_id", "unknown")
@@ -269,7 +347,47 @@ def escalation_node(state: AgentState) -> Dict[str, Any]:
     logger.info("Escalation node processing - routing to human support")
 
     initialize_agents()  # Ensure agents are initialized
-    result = escalation_executor.invoke({"messages": state["messages"]})
+    
+    # Retrieve memory context for personalized responses
+    user_id = state.get("user_context", {}).get("user_id", "unknown")
+    ticket_id = state.get("ticket_id", "unknown")
+    
+    memory_context = ""
+    conversation_history = []
+    user_prefs = {}
+    
+    if user_id != "unknown":
+        try:
+            # Get conversation history
+            conversation_history = get_conversation_history(user_id, ticket_id, limit=10)
+            if conversation_history:
+                memory_context += f"\n\nCONVERSATION HISTORY:\n"
+                for msg in conversation_history[-5:]:  # Last 5 messages for context
+                    role = "User" if msg["message_type"] == "human" else "Assistant"
+                    memory_context += f"{role}: {msg['content'][:200]}...\n"
+            
+            # Get user preferences
+            user_prefs = get_all_user_preferences(user_id)
+            if user_prefs:
+                memory_context += f"\nUSER PREFERENCES:\n"
+                for key, value in user_prefs.items():
+                    memory_context += f"- {key}: {value}\n"
+                    
+            logger.info(f"Retrieved memory context for escalation agent - user {user_id}: {len(conversation_history)} messages, {len(user_prefs)} preferences")
+        except Exception as e:
+            logger.error(f"Failed to retrieve memory context for escalation agent: {e}")
+            memory_context = ""
+
+    # Create enhanced messages with memory context
+    messages = state["messages"]
+    enhanced_messages = messages.copy()
+    if memory_context:
+        # Add memory context as a system message at the beginning
+        from langchain_core.messages import SystemMessage
+        memory_message = SystemMessage(content=f"USER CONTEXT INFORMATION:{memory_context}")
+        enhanced_messages.insert(0, memory_message)
+
+    result = escalation_executor.invoke({"messages": enhanced_messages})
 
     # Save AI response to persistent memory
     ticket_id = state.get("ticket_id", "unknown")

@@ -49,14 +49,25 @@ def model_to_dict(instance):
     }
 
 def chat_interface(agent:CompiledStateGraph, ticket_id:str):
+    # Import memory functions
+    from agentic.memory import save_user_preference
+    
     is_first_iteration = True
     user_name = None
+    user_id = None
     messages = [SystemMessage(content = f"ThreadId: {ticket_id}")]
+    
     while True:
         if is_first_iteration:
             user_input = input("What is your name? ")
             user_name = user_input.strip()
             print(f"Name: {user_name}")
+            
+            # Create or get user ID for memory system
+            # For demo purposes, we'll use the name as a simple user identifier
+            # In a real system, this would be looked up from a user database
+            user_id = f"user_{user_name.lower().replace(' ', '_')}"
+            
             prompt_text = "Question: "
         else:
             user_input = input(prompt_text)
@@ -72,8 +83,12 @@ def chat_interface(agent:CompiledStateGraph, ticket_id:str):
         
         messages = [HumanMessage(content=message_content)]
         
+        # Prepare the state with user context
         trigger = {
-            "messages": messages
+            "messages": messages,
+            "user_context": {"user_id": user_id, "user_name": user_name} if user_id else {},
+            "ticket_id": ticket_id,
+            "account_id": "cultpass"
         }
         config = {
             "configurable": {
