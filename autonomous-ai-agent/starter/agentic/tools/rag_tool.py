@@ -84,7 +84,7 @@ class KnowledgeBaseSearch:
             return search_results
 
 # Tool function for LangChain
-def search_knowledge_base(query: str, n_results: int = 3) -> str:
+def search_knowledge_base(query: str, n_results: int = 3) -> Dict[str, Any]:
     """Search the knowledge base using simple text matching.
 
     Args:
@@ -92,13 +92,22 @@ def search_knowledge_base(query: str, n_results: int = 3) -> str:
         n_results: Number of results to return
 
     Returns:
-        Formatted search results
+        Dictionary with response text and confidence information
     """
     search = KnowledgeBaseSearch()
     results = search.search_knowledge(query, n_results)
 
     if not results:
-        return "No relevant information found in the knowledge base."
+        return {
+            "response": "No relevant information found in the knowledge base.",
+            "confidence": 0.0,
+            "found_results": False
+        }
+
+    # Calculate overall confidence based on top result score
+    # Normalize score to 0-1 range (assuming max possible score ~50)
+    top_score = results[0]['relevance_score']
+    confidence = min(top_score / 20.0, 1.0)  # Cap at 1.0
 
     formatted_results = []
     for result in results:
@@ -109,7 +118,12 @@ def search_knowledge_base(query: str, n_results: int = 3) -> str:
 *Relevance: {result['relevance_score']}*
 """)
 
-    return "\n---\n".join(formatted_results)
+    return {
+        "response": "\n---\n".join(formatted_results),
+        "confidence": confidence,
+        "found_results": True,
+        "top_score": top_score
+    }
 
 if __name__ == "__main__":
     # Test the search

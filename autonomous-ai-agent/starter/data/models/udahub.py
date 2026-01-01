@@ -16,6 +16,18 @@ from sqlalchemy.sql import func
 
 Base:DeclarativeBase = declarative_base()
 
+class TicketStatus(enum.Enum):
+    open = "open"
+    in_progress = "in_progress"
+    resolved = "resolved"
+    closed = "closed"
+
+class TicketPriority(enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    urgent = "urgent"
+
 class Account(Base):
     __tablename__ = 'accounts'
     account_id = Column(String, primary_key=True)
@@ -43,6 +55,8 @@ class User(Base):
 
     account = relationship("Account", back_populates="users")
     tickets = relationship("Ticket", back_populates="user")
+    conversations = relationship("ConversationHistory", back_populates="user")
+    preferences = relationship("UserPreferences", back_populates="user")
 
     __table_args__ = (
         UniqueConstraint('account_id', 'external_user_id', name='uq_user_external_per_account'),
@@ -58,16 +72,21 @@ class Ticket(Base):
     ticket_id = Column(String, primary_key=True)
     account_id = Column(String, ForeignKey('accounts.account_id'), nullable=False)
     user_id = Column(String, ForeignKey('users.user_id'), nullable=False)
+    title = Column(String, nullable=False)
+    status = Column(Enum(TicketStatus), default=TicketStatus.open)
+    priority = Column(Enum(TicketPriority), default=TicketPriority.medium)
     channel = Column(String)
     created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     account = relationship("Account", back_populates="tickets")
     user = relationship("User", back_populates="tickets")
     ticket_metadata = relationship("TicketMetadata", uselist=False, back_populates="ticket")
     messages = relationship("TicketMessage", back_populates="ticket")
+    conversations = relationship("ConversationHistory", back_populates="ticket")
 
     def __repr__(self):
-        return f"<Ticket(ticket_id='{self.ticket_id}', channel='{self.channel}', created_at='{self.created_at}')>"
+        return f"<Ticket(ticket_id='{self.ticket_id}', title='{self.title}', status='{self.status.value}')>"
 
 
 class TicketMetadata(Base):
@@ -121,3 +140,41 @@ class Knowledge(Base):
 
     def __repr__(self):
         return f"<Knowledge(article_id='{self.article_id}', title='{self.title}')>"
+
+
+class ConversationHistory(Base):
+    __tablename__ = 'conversation_history'
+    id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey('users.user_id'), nullable=False)
+    ticket_id = Column(String, ForeignKey('tickets.ticket_id'), nullable=False)
+    message_type = Column(String, nullable=False)  # 'human' or 'ai'
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="conversations")
+    ticket = relationship("Ticket", back_populates="conversations")
+
+    def __repr__(self):
+        return f"<ConversationHistory(id='{self.id}', user_id='{self.user_id}', message_type='{self.message_type}')>"
+
+
+class UserPreferences(Base):
+    __tablename__ = 'user_preferences'
+    id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey('users.user_id'), nullable=False)
+    preference_key = Column(String, nullable=False)
+    preference_value = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="preferences")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'preference_key', name='uq_user_preference'),
+    )
+
+    def __repr__(self):
+        return f"<UserPreferences(user_id='{self.user_id}', key='{self.preference_key}')>"
+
+
+# Update existing models to include new relationships

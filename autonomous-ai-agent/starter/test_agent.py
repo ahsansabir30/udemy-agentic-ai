@@ -18,23 +18,23 @@ class TestKnowledgeBaseSearch:
     def test_search_login_issues(self):
         """Test searching for login-related information."""
         results = search_knowledge_base("login")
-        assert "How to Handle Login Issues?" in results
-        assert "password" in results.lower()
+        assert "How to Handle Login Issues?" in results["response"]
+        assert "password" in results["response"].lower()
 
     def test_search_reservation(self):
         """Test searching for reservation information."""
         results = search_knowledge_base("reserve")
-        assert "How to Reserve a Spot for an Event" in results
+        assert "How to Reserve a Spot for an Event" in results["response"]
 
     def test_search_nonexistent_topic(self):
         """Test searching for topic that doesn't exist."""
         results = search_knowledge_base("nonexistent_topic_xyz")
-        assert "No relevant information found" in results
+        assert "No relevant information found" in results["response"]
 
     def test_search_subscription(self):
         """Test searching for subscription information."""
         results = search_knowledge_base("subscription")
-        assert len(results) > 0  # Should find some results
+        assert len(results["response"]) > 0  # Should find some results
 
 class TestSupervisorAgent:
     """Test the supervisor agent routing logic."""

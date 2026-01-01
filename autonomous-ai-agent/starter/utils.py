@@ -49,17 +49,29 @@ def model_to_dict(instance):
     }
 
 def chat_interface(agent:CompiledStateGraph, ticket_id:str):
-    is_first_iteration = False
+    is_first_iteration = True
+    user_name = None
     messages = [SystemMessage(content = f"ThreadId: {ticket_id}")]
     while True:
-        user_input = input("User: ")
-        print("User:", user_input)
+        if is_first_iteration:
+            user_input = input("What is your name? ")
+            user_name = user_input.strip()
+            print(f"Name: {user_name}")
+            prompt_text = "Question: "
+        else:
+            user_input = input(prompt_text)
+        
         if user_input.lower() in ["quit", "exit", "q"]:
             print("Assistant: Goodbye!")
             break
-        messages = [HumanMessage(content=user_input)]
-        if is_first_iteration:
-            messages.append(HumanMessage(content=user_input))
+        
+        # Add user name context to the message if available
+        message_content = user_input
+        if user_name and not is_first_iteration:
+            message_content = f"User: {user_name}\nQuestion: {user_input}"
+        
+        messages = [HumanMessage(content=message_content)]
+        
         trigger = {
             "messages": messages
         }

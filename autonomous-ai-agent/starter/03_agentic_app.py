@@ -19,7 +19,7 @@ def main():
         print("Please create a .env file with your OpenAI API key.")
         return
 
-    print("🤖 Uda-hub Autonomous AI Agent")
+    print("Uda-hub Autonomous AI Agent")
     print("==============================")
     print("Welcome to the Uda-hub customer support system.")
     print("Type 'quit' or 'exit' to end the conversation.")
@@ -29,7 +29,7 @@ def main():
     try:
         orchestrator = get_orchestrator()
     except Exception as e:
-        print(f"❌ Failed to initialize orchestrator: {e}")
+        print(f"Failed to initialize orchestrator: {e}")
         return
 
     # Start the chat interface
@@ -38,7 +38,7 @@ def main():
     except KeyboardInterrupt:
         print("\n👋 Goodbye!")
     except Exception as e:
-        print(f"\n❌ An error occurred: {e}")
+        print(f"\nAn error occurred: {e}")
         print("Please check your configuration and try again.")
 
 if __name__ == "__main__":

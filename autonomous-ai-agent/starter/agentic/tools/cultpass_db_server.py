@@ -22,8 +22,9 @@ app = FastMCP("CultPass Database Server")
 
 # Database setup
 def get_db_path() -> str:
-    """Get the relative path to the CultPass database."""
-    return "data/external/cultpass.db"
+    """Get the absolute path to the CultPass database."""
+    script_dir = Path(__file__).parent.parent.parent  # Go up to solution directory
+    return str(script_dir / "data" / "external" / "cultpass.db")
 
 def get_engine():
     """Create database engine."""

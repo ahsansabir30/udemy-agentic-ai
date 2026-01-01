@@ -2,6 +2,8 @@
 Main workflow orchestration for the Uda-hub agentic system.
 """
 
+import logging
+import uuid
 from typing import Dict, Any, List, TypedDict
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.tools import Tool
@@ -24,6 +26,19 @@ from agentic.tools.udahub_db_server import (
     search_knowledge_base as search_kb_udahub,
     get_ticket_info, create_ticket_message, update_ticket_status, get_user_tickets
 )
+
+# Import memory system
+from agentic.memory import (
+    save_conversation_message, get_conversation_history,
+    save_user_preference, get_user_preference, get_all_user_preferences
+)
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Define state
 class AgentState(TypedDict):
@@ -115,59 +130,165 @@ def initialize_agents():
 # Workflow functions
 def supervisor_node(state: AgentState) -> Dict[str, Any]:
     """Supervisor agent routing logic."""
+    logger.info("Supervisor node processing request")
+
     messages = state["messages"]
     last_message = messages[-1]
 
     if isinstance(last_message, HumanMessage):
         query = last_message.content
+        logger.info(f"Routing query: {query[:100]}...")
+
         routing = supervisor.route_query(query)
+        logger.info(f"Routed to agent: {routing['agent']} - Reason: {routing['reason']}")
+
+        # Save user message to persistent memory
+        ticket_id = state.get("ticket_id", "unknown")
+        user_id = state.get("user_context", {}).get("user_id", "unknown")
+        if user_id != "unknown":
+            try:
+                save_conversation_message(user_id, ticket_id, "human", query)
+                logger.info(f"Saved user message to persistent memory for user {user_id}")
+            except Exception as e:
+                logger.error(f"Failed to save user message to memory: {e}")
 
         return {
             "current_agent": routing["agent"],
             "messages": messages,
             "user_context": state.get("user_context", {}),
-            "ticket_id": state.get("ticket_id", ""),
+            "ticket_id": ticket_id,
             "account_id": state.get("account_id", "cultpass")
         }
 
     return state
 
 def knowledge_node(state: AgentState) -> Dict[str, Any]:
-    """Knowledge agent processing."""
+    """Knowledge agent processing with confidence scoring and escalation."""
+    logger.info("Knowledge node processing request")
+
     initialize_agents()  # Ensure agents are initialized
+
+    # Get the last human message for analysis
+    messages = state["messages"]
+    last_human_message = None
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage):
+            last_human_message = msg
+            break
+
+    if last_human_message:
+        query = last_human_message.content
+        logger.info(f"Processing knowledge query: {query[:100]}...")
+
+        # Check if we should escalate based on query complexity or previous failures
+        should_escalate = False
+
+        # Simple heuristic: escalate if query contains certain keywords
+        escalation_keywords = ["complaint", "problem", "issue", "wrong", "error", "bug", "refund", "cancel"]
+        if any(keyword in query.lower() for keyword in escalation_keywords):
+            should_escalate = True
+            logger.info("Query contains escalation keywords, routing to escalation")
+
     result = knowledge_executor.invoke({"messages": state["messages"]})
+
+    # Extract confidence information from the result if available
+    confidence = 0.5  # Default confidence
+    ai_response = ""
+
+    # Try to extract confidence from the AI response
+    if result["messages"]:
+        last_message = result["messages"][-1]
+        if hasattr(last_message, 'content'):
+            ai_response = last_message.content
+
+            # Look for confidence indicators in the response
+            if "No relevant information found" in ai_response:
+                confidence = 0.0
+                should_escalate = True
+                logger.warning("No relevant information found, escalating")
+            elif "don't know" in ai_response.lower() or "uncertain" in ai_response.lower():
+                confidence = 0.2
+                if confidence < 0.3:
+                    should_escalate = True
+                    logger.info("Low confidence response, escalating")
+
+    # Save AI response to persistent memory
+    ticket_id = state.get("ticket_id", "unknown")
+    user_id = state.get("user_context", {}).get("user_id", "unknown")
+    if user_id != "unknown" and ai_response:
+        try:
+            save_conversation_message(user_id, ticket_id, "ai", ai_response)
+            logger.info(f"Saved AI response to persistent memory for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to save AI response to memory: {e}")
+
+    # Determine next agent based on confidence and escalation logic
+    next_agent = "knowledge_agent"  # Default to end
+    if should_escalate:
+        next_agent = "escalation_agent"
+        logger.info("Knowledge agent escalating to human support")
 
     return {
         "messages": result["messages"],
-        "current_agent": "knowledge_agent",
+        "current_agent": next_agent,
         "user_context": state.get("user_context", {}),
-        "ticket_id": state.get("ticket_id", ""),
+        "ticket_id": ticket_id,
         "account_id": state.get("account_id", "cultpass")
     }
 
 def action_node(state: AgentState) -> Dict[str, Any]:
     """Action agent processing."""
+    logger.info("Action node processing request")
+
     initialize_agents()  # Ensure agents are initialized
     result = action_executor.invoke({"messages": state["messages"]})
 
+    # Save AI response to persistent memory
+    ticket_id = state.get("ticket_id", "unknown")
+    user_id = state.get("user_context", {}).get("user_id", "unknown")
+    if result["messages"]:
+        last_message = result["messages"][-1]
+        if hasattr(last_message, 'content') and user_id != "unknown":
+            try:
+                save_conversation_message(user_id, ticket_id, "ai", last_message.content)
+                logger.info(f"Saved action agent response to persistent memory for user {user_id}")
+            except Exception as e:
+                logger.error(f"Failed to save action response to memory: {e}")
+
+    logger.info("Action agent completed processing")
     return {
         "messages": result["messages"],
         "current_agent": "action_agent",
         "user_context": state.get("user_context", {}),
-        "ticket_id": state.get("ticket_id", ""),
+        "ticket_id": ticket_id,
         "account_id": state.get("account_id", "cultpass")
     }
 
 def escalation_node(state: AgentState) -> Dict[str, Any]:
     """Escalation agent processing."""
+    logger.info("Escalation node processing - routing to human support")
+
     initialize_agents()  # Ensure agents are initialized
     result = escalation_executor.invoke({"messages": state["messages"]})
 
+    # Save AI response to persistent memory
+    ticket_id = state.get("ticket_id", "unknown")
+    user_id = state.get("user_context", {}).get("user_id", "unknown")
+    if result["messages"]:
+        last_message = result["messages"][-1]
+        if hasattr(last_message, 'content') and user_id != "unknown":
+            try:
+                save_conversation_message(user_id, ticket_id, "ai", last_message.content)
+                logger.info(f"Saved escalation response to persistent memory for user {user_id}")
+            except Exception as e:
+                logger.error(f"Failed to save escalation response to memory: {e}")
+
+    logger.info("Escalation agent completed - human support notified")
     return {
         "messages": result["messages"],
         "current_agent": "escalation_agent",
         "user_context": state.get("user_context", {}),
-        "ticket_id": state.get("ticket_id", ""),
+        "ticket_id": ticket_id,
         "account_id": state.get("account_id", "cultpass")
     }
 
@@ -194,8 +315,17 @@ workflow.add_conditional_edges(
     }
 )
 
-# All agents lead to end for now
-workflow.add_edge("knowledge_agent", END)
+# Conditional routing from knowledge agent (can escalate)
+workflow.add_conditional_edges(
+    "knowledge_agent",
+    lambda state: state["current_agent"],
+    {
+        "knowledge_agent": END,  # End conversation
+        "escalation_agent": "escalation_agent"  # Escalate to human
+    }
+)
+
+# All other agents lead to end
 workflow.add_edge("action_agent", END)
 workflow.add_edge("escalation_agent", END)
 

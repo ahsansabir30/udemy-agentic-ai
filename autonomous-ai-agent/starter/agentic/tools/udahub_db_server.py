@@ -22,8 +22,9 @@ app = FastMCP("Uda-hub Database Server")
 
 # Database setup
 def get_db_path() -> str:
-    """Get the relative path to the Uda-hub database."""
-    return "data/core/udahub.db"
+    """Get the absolute path to the Uda-hub database."""
+    script_dir = Path(__file__).parent.parent.parent  # Go up to solution directory
+    return str(script_dir / "data" / "core" / "udahub.db")
 
 def get_engine():
     """Create database engine."""
