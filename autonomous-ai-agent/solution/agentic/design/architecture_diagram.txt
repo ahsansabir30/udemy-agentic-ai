@@ -1,0 +1,36 @@
+```
+User Query
+    |
+    v
+Supervisor Agent
+    |
+    +-------------------+
+    |                   |
+    v                   v
+Knowledge Agent      Action Agent
+    |                   |
+    v                   v
+RAG Retrieval      Database Tools
+    |                   |
+    +-------------------+
+    |
+    v
+Response Generation
+    |
+    v
+User Response
+```
+
+## Data Flow Sequence
+
+1. User sends message
+2. Chat interface captures input
+3. Orchestrator receives message with thread_id
+4. Supervisor agent analyzes intent
+5. Routes to appropriate specialized agent
+6. Agent uses tools to gather information
+7. Database operations via MCP servers
+8. Knowledge retrieval via RAG
+9. Response synthesized
+10. State persisted in checkpointer
+11. Response sent to user
