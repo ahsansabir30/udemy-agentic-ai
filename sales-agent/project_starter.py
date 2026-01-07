@@ -876,7 +876,6 @@ def run_test_scenarios():
         request = rewrite_prompt.run(request_with_date.replace("\n", " "))
         print(request)
 
-        break
         response = orchestration_agent.run(request_with_date)
 
         # Update state
